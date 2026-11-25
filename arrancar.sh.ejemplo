@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Arranque de los cinco microservicios con el perfil cloud.
+#
+# Copiar como arrancar.sh, completar las tres variables y dar permiso de
+# ejecucion. El archivo real queda fuera del repositorio porque lleva la
+# contrasena de la base de datos.
+#
+#   cp arrancar.sh.ejemplo arrancar.sh
+#   nano arrancar.sh
+#   chmod +x arrancar.sh
+#   ./arrancar.sh
+
+export DB_URL="jdbc:mysql://CAMBIAR.us-east-1.rds.amazonaws.com:3306/innovatech?useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+export DB_USER="admin"
+export DB_PASS="CAMBIAR"
+
+# Origenes autorizados para CORS. En la nube es el dominio de CloudFront.
+export CORS_ORIGINS="http://localhost:5173"
+
+# Limite de memoria por proceso: sin el, cada maquina virtual reserva una
+# fraccion del total y entre las cinco desplazan a los brokers.
+export JAVA_TOOL_OPTIONS="-Xmx300m"
+
+levantar () {
+  nohup java -jar "$1" --spring.profiles.active=cloud > "${1%.jar}.log" 2>&1 &
+  echo "levantado: $1"
+}
+
+# ms-productos crea las tablas, por eso parte primero y con ventaja.
+levantar ms-productos-1.0.0.jar
+sleep 10
+levantar ms-pedidos-1.0.0.jar
+levantar ms-notificaciones-1.0.0.jar
+levantar ms-admin-rabbit-1.0.0.jar
+levantar ms-kafka-1.0.0.jar

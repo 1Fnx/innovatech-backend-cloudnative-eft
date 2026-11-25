@@ -1,0 +1,154 @@
+spring:
+  application:
+    name: ms-pedidos
+  profiles:
+    active: demo
+
+  # --- Conexion al broker RabbitMQ ------------------------------------------
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASS:admin123}
+    virtual-host: /
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        # Confirmacion explicita por parte de cada consumidor
+        acknowledge-mode: manual
+        prefetch: 1
+        concurrency: 1
+        max-concurrency: 3
+
+  # Cluster de Kafka. La lista sirve para el primer contacto; el cliente obtiene
+  # de ahi el mapa del cluster. Direcciones localhost porque la aplicacion corre
+  # fuera de Docker: kafka-N:29092 solo resuelve entre contenedores.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092,localhost:9093,localhost:9094}
+
+server:
+  port: 8082
+
+logging:
+  level:
+    root: INFO
+    cl.innovatech: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{30} - %msg%n"
+
+# =============================================================================
+# CONFIGURACION PROPIA DE LA APLICACION
+# =============================================================================
+app:
+
+  # ---------------------------------------------------------------------------
+  # SEGURIDAD - Microsoft Entra External ID
+  # ---------------------------------------------------------------------------
+  security:
+    tenant-id: 195a9a2b-7458-48e9-b93d-8667f389ab8c
+    issuer-uri: https://195a9a2b-7458-48e9-b93d-8667f389ab8c.ciamlogin.com/195a9a2b-7458-48e9-b93d-8667f389ab8c/
+    jwk-set-uri: https://195a9a2b-7458-48e9-b93d-8667f389ab8c.ciamlogin.com/195a9a2b-7458-48e9-b93d-8667f389ab8c/discovery/v2.0/keys
+    audiences: api://6fd02921-82d8-4677-9495-8d0b20f0ac07
+
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+
+
+  # Topicos del log distribuido. Mismo criterio que app.rabbit: los nombres se
+  # declaran aqui y se inyectan con KafkaProperties.
+  #   pedidos-eventos         lo produce este microservicio
+  #   inventario-movimientos  lo produce ms-productos tras descontar stock
+  # Quien crea los topicos con esta forma es ms-kafka.
+  kafka:
+    topics:
+      pedidos-eventos: innovatech.pedidos.eventos
+      inventario-movimientos: innovatech.inventario.movimientos
+    particiones: 3
+    replicas: 3
+
+  # ===========================================================================
+  # MENSAJERIA - NOMBRES DE LA TOPOLOGIA
+  # ---------------------------------------------------------------------------
+  # Ningun nombre de cola, exchange, routing key o DLQ se escribe suelto dentro
+  # del codigo Java. Todos se declaran aqui y se inyectan mediante la clase
+  # MensajeriaProperties (@ConfigurationProperties) o con placeholders.
+  # Este bloque es identico en los cuatro microservicios: es el contrato de
+  # nombres compartido por todo el sistema.
+  # ===========================================================================
+  rabbit:
+
+    # --- Exchanges -----------------------------------------------------------
+    exchanges:
+      pedidos: innovatech.pedidos.exchange   # eventos del dominio de pedidos (topic)
+      alertas: innovatech.alertas.direct     # avisos operativos de un solo destinatario (direct)
+      dlx: innovatech.dlx                    # Dead Letter Exchange (topic)
+
+    # --- Routing keys --------------------------------------------------------
+    routing-keys:
+      pedido-creado: pedido.creado           # evento que publica ms-pedidos
+      alerta-stock-bajo: alerta.stock.bajo   # aviso que publica ms-productos
+      dlq-notificaciones: dlq.notificaciones
+      dlq-documentos: dlq.documentos
+      dlq-inventario: dlq.inventario
+      dlq-alertas: dlq.alertas
+
+    # --- Colas de trabajo ----------------------------------------------------
+    queues:
+      notificaciones: pedidos.notificaciones.queue
+      documentos: pedidos.documentos.queue
+      inventario: pedidos.inventario.queue
+      alertas-stock: alertas.stock.queue
+      # --- Dead Letter Queues: una por dominio, para no mezclar las fallas ---
+      notificaciones-dlq: pedidos.notificaciones.dlq
+      documentos-dlq: pedidos.documentos.dlq
+      inventario-dlq: pedidos.inventario.dlq
+      alertas-stock-dlq: alertas.stock.dlq
+
+    # --- Auditoria de las Dead Letter Queues ---------------------------------
+    # Con el valor en true, los consumidores de auditoria leen cada DLQ, dejan
+    # el detalle del descarte en el log y en la bitacora, y confirman. Ponerlo
+    # en false deja los mensajes acumulados en la cola sin procesar.
+    auditoria-dlq: true
+
+    # --- Politica de reintentos del consumidor -------------------------------
+    reintentos:
+      max-intentos: 2   # 1 intento original + 1 reintento; luego se envia a DLQ
+
+# =============================================================================
+# PERSISTENCIA POR PERFIL
+#   demo  -> H2 en memoria (no requiere instalar nada)
+#   cloud -> MySQL administrado en la nube
+# =============================================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+  datasource:
+    url: jdbc:h2:mem:innovatech;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: true
+---
+spring:
+  config:
+    activate:
+      on-profile: cloud
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/innovatech}
+    username: ${DB_USER:innovatech}
+    password: ${DB_PASS:cambiar}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.MySQLDialect

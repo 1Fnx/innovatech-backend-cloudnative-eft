@@ -1,0 +1,29 @@
+# Compilados Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# Configuracion sensible
+.env
+*.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Logs y temporales
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+# Node (no corresponde al backend)
+node_modules/
+
+# Despliegue: lleva credenciales de la base de datos
+arrancar.sh

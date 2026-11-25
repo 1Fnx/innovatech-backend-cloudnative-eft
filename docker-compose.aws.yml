@@ -1,0 +1,36 @@
+# Superposicion para el despliegue en una instancia de 8 GB de memoria.
+#
+# No reemplaza a docker-compose.kafka.yml: lo complementa. Docker Compose
+# combina los dos archivos cuando se pasan los dos con -f, y lo unico que este
+# aporta son los limites de memoria de cada maquina virtual de Java.
+#
+# Sin estos limites, cada proceso reserva una fraccion del total disponible y
+# entre los seis contenedores de Kafka mas RabbitMQ no cabe el conjunto.
+#
+#   docker compose -f docker-compose.kafka.yml -f docker-compose.aws.yml up -d
+
+services:
+
+  zookeeper-1:
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx192M -Xms192M"
+
+  zookeeper-2:
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx192M -Xms192M"
+
+  zookeeper-3:
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx192M -Xms192M"
+
+  kafka-1:
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
+
+  kafka-2:
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
+
+  kafka-3:
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"

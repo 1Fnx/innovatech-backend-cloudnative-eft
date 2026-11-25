@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: ms-kafka
+
+  kafka:
+    # Los tres brokers. El cliente solo necesita alcanzar uno para obtener el
+    # mapa del cluster; se listan los tres para que el arranque no dependa de
+    # cual este disponible.
+    #
+    # Direcciones localhost porque la aplicacion corre fuera de Docker.
+    # kafka-N:29092 solo resuelve dentro de la red de contenedores.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092,localhost:9093,localhost:9094}
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Confirmacion de todas las replicas sincronizadas. Con
+      # min.insync.replicas en 2, el registro queda en al menos dos brokers.
+      acks: all
+
+    consumer:
+      group-id: ${app.kafka.grupo-id}
+      # Solo actua cuando el grupo no tiene un offset confirmado valido; no
+      # fuerza una relectura en cada reinicio.
+      auto-offset-reset: earliest
+      # Confirmado automatico y periodico. Comodo para inspeccion, pero sin
+      # garantia de procesamiento: los consumidores del negocio usan manual.
+      enable-auto-commit: true
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+server:
+  port: 8888
+
+logging:
+  level:
+    root: INFO
+    cl.innovatech: DEBUG
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{30} - %msg%n"
+
+# Nombres de topicos y grupos: se declaran aqui y se inyectan con
+# KafkaProperties o con placeholders. Ninguna clase los escribe como literal.
+app:
+  kafka:
+    # Topico de pruebas con productor y consumidor en este mismo proceso.
+    topic: innovatech.laboratorio.particiones
+
+    # Forma por omision de todo topico que cree la aplicacion.
+    particiones: 3
+    replicas: 3
+    # Copias que confirman una escritura acks=all. Con replicas=3, el valor 2
+    # tolera la caida de un broker sin bloquear la escritura.
+    min-insync-replicas: 2
+    retencion-dias: 7
+    politica-limpieza: delete
+    sufijo-dlt: ".DLT"
+
+    # Topicos que este microservicio declara al arrancar. Para cada uno se
+    # declara tambien su topico de descartes.
+    topics-del-negocio:
+      - innovatech.pedidos.eventos
+      - innovatech.inventario.movimientos
+
+    # Grupos del sistema. Los dos primeros leen el mismo topico con grupos
+    # distintos, de modo que ambos reciben todos los eventos.
+    grupos-del-negocio:
+      - grupo-inventario
+      - grupo-notificaciones
+      - grupo-alertas
+
+    grupo-id: grupo-laboratorio
+
+    # Tope de la ventana de registros consumidos que se guarda en memoria.
+    bitacora-maxima: 200
+    espera-confirmacion-segundos: 15
+
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}

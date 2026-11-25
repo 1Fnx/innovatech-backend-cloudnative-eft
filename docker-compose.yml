@@ -1,0 +1,46 @@
+# RabbitMQ - broker de colas.
+#
+# Kafka vive en docker-compose.kafka.yml: son plataformas independientes, no
+# comparten infraestructura, y levantarlas por separado evita ocupar los ~2,7 GB
+# del cluster de Kafka cuando solo se trabaja con colas.
+#
+#   docker compose up -d
+#   docker compose ps
+#   docker compose logs --tail=60 rabbitmq
+#    docker compose down         -> detiene y elimina el contenedor
+#
+#  Puertos publicados:
+#    5672  -> AMQP, lo usan ms-pedidos, ms-productos y ms-notificaciones
+#    15672 -> consola de administracion (http://localhost:15672  admin/admin123)
+#
+#  El clusterizado de dos nodos esta en docker-compose.cluster.yml y se levanta
+#  solo para esa demostracion puntual.
+# =============================================================================
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: innovatech-rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      # Volumen con nombre: conserva exchanges, colas y bindings entre
+      # reinicios del contenedor. Sin el, cada "docker compose down" dejaria la
+      # topologia vacia y habria que volver a declararla.
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      # Distingue un contenedor arriba de un broker que ya responde. Los
+      # microservicios fallan al conectar si arrancan antes de tiempo.
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rabbitmq_data:
