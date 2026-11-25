@@ -1,0 +1,58 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "1 - ms-productos (8081)",
+      "request": "launch",
+      "mainClass": "cl.innovatech.productos.MsProductosApplication",
+      "projectName": "ms-productos",
+      "console": "internalConsole"
+    },
+    {
+      "type": "java",
+      "name": "2 - ms-pedidos (8082)",
+      "request": "launch",
+      "mainClass": "cl.innovatech.pedidos.MsPedidosApplication",
+      "projectName": "ms-pedidos",
+      "console": "internalConsole"
+    },
+    {
+      "type": "java",
+      "name": "3 - ms-notificaciones (8083)",
+      "request": "launch",
+      "mainClass": "cl.innovatech.notificaciones.MsNotificacionesApplication",
+      "projectName": "ms-notificaciones",
+      "console": "internalConsole"
+    },
+    {
+      "type": "java",
+      "name": "4 - ms-admin-rabbit (8084)",
+      "request": "launch",
+      "mainClass": "cl.innovatech.adminrabbit.MsAdminRabbitApplication",
+      "projectName": "ms-admin-rabbit",
+      "console": "internalConsole"
+    },
+    {
+      "type": "java",
+      "name": "5 - ms-kafka (8888)",
+      "request": "launch",
+      "mainClass": "cl.innovatech.kafka.MsKafkaApplication",
+      "projectName": "ms-kafka",
+      "console": "internalConsole"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Levantar los 5 microservicios",
+      "configurations": [
+        "1 - ms-productos (8081)",
+        "2 - ms-pedidos (8082)",
+        "3 - ms-notificaciones (8083)",
+        "4 - ms-admin-rabbit (8084)",
+        "5 - ms-kafka (8888)"
+      ],
+      "stopAll": true
+    }
+  ]
+}
