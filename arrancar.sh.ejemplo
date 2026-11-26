@@ -15,8 +15,10 @@ export DB_URL="jdbc:mysql://CAMBIAR.us-east-1.rds.amazonaws.com:3306/innovatech?
 export DB_USER="admin"
 export DB_PASS="CAMBIAR"
 
-# Origenes autorizados para CORS. En la nube es el dominio de CloudFront.
-export CORS_ORIGINS="http://localhost:5173"
+# Origenes autorizados para CORS, separados por coma. El primero es el
+# frontend de desarrollo; el segundo es el dominio del API Manager, que es
+# desde donde se sirve la aplicacion una vez desplegada.
+export CORS_ORIGINS="http://localhost:5173,https://CAMBIAR.execute-api.us-east-1.amazonaws.com"
 
 # Limite de memoria por proceso: sin el, cada maquina virtual reserva una
 # fraccion del total y entre las cinco desplazan a los brokers.
